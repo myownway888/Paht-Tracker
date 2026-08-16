@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="tabTitle">Universal Progress Tracker</title>
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 10%, #1e1b4b 0%, #0f172a 60%, #080d1a 100%);
+      --card-bg: rgba(30, 41, 59, 0.75);
+      --card-border: rgba(245, 158, 11, 0.25);
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --input-bg: rgba(15, 23, 42, 0.7);
+      --primary: #fbbf24;
+      --primary-dark: #d97706;
+      --accent-glow: rgba(245, 158, 11, 0.35);
+      --gold-gradient: linear-gradient(135deg, #fef08a, #f59e0b, #b45309);
+      --shadow-color: rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="light"] {
+      --bg-gradient: radial-gradient(circle at 50% 10%, #fff7ed 0%, #fef3c7 50%, #fde68a 100%);
+      --card-bg: rgba(255, 255, 255, 0.88);
+      --card-border: rgba(217, 119, 6, 0.3);
+      --text-main: #1e293b;
+      --text-sub: #475569;
+      --input-bg: rgba(255, 255, 255, 0.9);
+      --primary: #d97706;
+      --primary-dark: #b45309;
+      --accent-glow: rgba(217, 119, 6, 0.2);
+      --gold-gradient: linear-gradient(135deg, #d97706, #b45309, #78350f);
+      --shadow-color: rgba(217, 119, 6, 0.15);
+    }
+
+    * { box-sizing: border-box; transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      margin: 0;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 960px) { 
+      .container { grid-template-columns: 1fr 1fr; } 
+      .full-width { grid-column: 1 / -1; }
+    }
+
+    /* Top Banner & Header */
+    .header-banner {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 32px 20px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: 0 10px 40px var(--shadow-color);
+      position: relative;
+    }
+    
+    .theme-toggle-group {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px;
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+    }
+    .theme-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      padding: 4px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      width: auto;
+    }
+    .theme-btn.active {
+      background: var(--gold-gradient);
+      color: #fff;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .header-banner h1 {
+      margin: 0 0 6px 0;
+      font-size: 2.5rem;
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .header-banner p {
+      margin: 0 0 14px 0;
+      color: var(--text-sub);
+      font-size: 1.05rem;
+    }
+    
+    .timezone-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--primary);
+      border: 1px solid var(--card-border);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Continuous Fire / Spark Progress Bar */
+    .progress-section { margin-top: 24px; }
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: var(--text-sub);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .progress-bar-bg {
+      background: rgba(0, 0, 0, 0.3);
+      height: 22px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      position: relative;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b, #10b981);
+      background-size: 200% 100%;
+      border-radius: 12px;
+      transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      animation: flameRage 3s infinite linear;
+    }
+    .progress-bar-fill::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+      animation: sparkShimmer 1.5s infinite;
+    }
+
+    @keyframes flameRage {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes sparkShimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Cards Layout */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 8px 32px var(--shadow-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    h2, h3 { margin-top: 0; color: var(--primary); margin-bottom: 16px; font-weight: 700; }
+
+    /* Animated Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+    }
+    .stat-box {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--card-border);
+      padding: 16px 10px;
+      border-radius: 14px;
+      text-align: center;
+    }
+    .stat-box .val {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: inline-block;
+    }
+    .stat-box .lbl { font-size: 0.68rem; color: var(--text-sub); font-weight: 700; text-transform: uppercase; margin-top: 4px; }
+
+    /* Leaderboard & Badges */
+    .leader-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(0,0,0,0.15);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .leader-rank { font-weight: 800; width: 28px; color: var(--primary); }
+    .leader-name { flex-grow: 1; font-weight: 600; padding: 0 10px; }
+    .level-badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--primary);
+      border: 1px solid var(--card-border);
+    }
+
+    /* Controls & Forms */
+    form { display: flex; flex-direction: column; gap: 12px; }
+    label { font-size: 0.85rem; font-weight: 600; color: var(--text-sub); margin-bottom: -6px; }
+    input, select, button {
+      padding: 12px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      font-size: 14px;
+      color: var(--text-main);
+      width: 100%;
+      outline: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    button {
+      background: var(--gold-gradient);
+      color: #fff;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+    button:hover { opacity: 0.95; transform: translateY(-1px); }
+    button.secondary { background: rgba(255, 255, 255, 0.1); color: var(--text-main); box-shadow: none; border: 1px solid var(--card-border); }
+    button.danger { background: linear-gradient(135deg, #ef4444, #991b1b); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+    button.confirm-tick { background: #16a34a !important; color: white; font-weight: bold; }
+    button.action-btn { width: auto; padding: 4px 10px; font-size: 12px; margin-left: 4px; min-width: 36px; box-shadow: none; }
+
+    .data-layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 650px) { .data-layout { grid-template-columns: 1fr 1fr; } }
+
+    .scroll-box {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.15);
+    }
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.02);
+      margin-bottom: 6px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .edit-input-group { display: flex; gap: 4px; align-items: center; }
+    .edit-input-group input { padding: 4px 6px; font-size: 12px; width: 80px; }
+    
+    #statusMessage, #configSaveAlert {
+      display: none;
+      padding: 10px;
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .badge { background: rgba(14, 165, 233, 0.2); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- Header with Live Titles, IST Clock & Dynamic Flame Progress -->
+  <div class="header-banner">
+    <div class="theme-toggle-group">
+      <button class="theme-btn" onclick="setTheme('system')" id="theme-system">Auto</button>
+      <button class="theme-btn" onclick="setTheme('dark')" id="theme-dark">Dark</button>
+      <button class="theme-btn" onclick="setTheme('light')" id="theme-light">Light</button>
+    </div>
+
+    <h1 id="displayTitle">Japji Sahib Path Tracker</h1>
+    <p id="displaySubtitle">Track your daily path entries toward our global collective target.</p>
+    
+    <div class="timezone-badge">
+      <span>🇮🇳 Indian Standard Time (IST):</span>
+      <span id="istTimeDisplay">Loading Time...</span>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-info">
+        <span>Continuous Goal Completion</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Left Column: Entry Form & Admin Settings -->
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    
+    <div class="card">
+      <h2 id="displayFormHeader">Submit Daily Path</h2>
+      <div id="statusMessage">Entry submitted successfully!</div>
+      <form id="jaapForm">
+        <label id="lblInputName" for="name">Full Name</label>
+        <input type="text" id="name" placeholder="Enter Full Name" required>
+        
+        <label id="lblInputPhone" for="phone">Phone Number</label>
+        <input type="tel" id="phone" placeholder="Enter Phone Number" required>
+        
+        <label id="lblInputCount" for="count">Jaap Count</label>
+        <input type="number" id="count" placeholder="Enter Count" min="1" required>
+        
+        <label for="date">Entry Date</label>
+        <input type="date" id="date" required>
+        
+        <button type="submit" id="btnSubmitForm">Submit Entry</button>
+      </form>
+    </div>
+
+    <!-- Admin Panel with Collapsible Customizer -->
+    <div class="card">
+      <h3>Admin Panel</h3>
+      
+      <div id="adminLoggedOut">
+        <button id="toggleAdminBtn" onclick="toggleAdminPasswordInput()">Unlock Admin Access</button>
+        <div id="adminPasswordContainer" style="display: none; margin-top: 10px;">
+          <input type="password" id="adminCode" placeholder="Enter Password">
+          <button onclick="checkAdmin()" style="margin-top: 8px;">Login</button>
+        </div>
+      </div>
+
+      <div id="adminLoggedIn" style="display:none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="color: #4ade80; font-weight: bold; font-size: 0.85rem;">✓ Admin Authenticated</span>
+          <button onclick="logoutAdmin()" style="width: auto; padding: 4px 10px; font-size: 12px; background: #64748b;">Logout</button>
+        </div>
+
+        <!-- Inline In-Screen Alert Notification -->
+        <div id="configSaveAlert">✓ Customizations saved successfully!</div>
+
+        <!-- Collapsible Accordion Trigger Button -->
+        <button class="secondary" onclick="toggleCustomizerPanel()" style="margin-bottom: 12px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+          <span>✏️ Customize Titles & Targets</span>
+          <span id="customizerArrow">►</span>
+        </button>
+
+        <!-- Hidden Collapsible Panel -->
+        <div id="customizerPanel" style="display: none; background: rgba(0,0,0,0.2); padding: 14px; border-radius: 12px; border: 1px solid var(--card-border); margin-bottom: 16px;">
+          <h4 style="margin: 0 0 10px 0; color: var(--primary);">⚙️ Live Site Configurator</h4>
+          
+          <label>Main Title</label>
+          <input type="text" id="cfgMainTitle" style="margin-bottom: 8px;">
+          
+          <label>Subtitle / Description</label>
+          <input type="text" id="cfgSubtitle" style="margin-bottom: 8px;">
+
+          <label>Form Header Title</label>
+          <input type="text" id="cfgFormHeader" style="margin-bottom: 8px;">
+
+          <label>Target Count (Global Goal)</label>
+          <input type="number" id="cfgTargetJaap" style="margin-bottom: 8px;">
+
+          <label>Name Field Label</label>
+          <input type="text" id="cfgLabelName" style="margin-bottom: 8px;">
+
+          <label>Count Field Label</label>
+          <input type="text" id="cfgLabelCount" style="margin-bottom: 8px;">
+
+          <label>Submit Button Text</label>
+          <input type="text" id="cfgBtnSubmit" style="margin-bottom: 12px;">
+
+          <button onclick="saveSiteConfiguration()" style="margin-bottom: 8px;">Save Live Customization</button>
+          <button onclick="exportDataJSON()" class="secondary" style="margin-bottom: 8px;">Export Backup (JSON)</button>
+        </div>
+
+        <button id="resetAllBtn" onclick="startResetTimer(this)" class="danger">Reset All Entries</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right Column: Stats & Top 10 Leaderboard -->
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    <div class="card">
+      <h2>Dashboard Summary</h2>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="val" id="statTarget">0</div><div class="lbl">Target Goal</div></div>
+        <div class="stat-box"><div class="val" id="statGrandTotal">0</div><div class="lbl">Total Completed</div></div>
+        <div class="stat-box"><div class="val" id="statRemaining">0</div><div class="lbl">Remaining</div></div>
+        <div class="stat-box"><div class="val" id="statPeopleCount">0</div><div class="lbl">Active Members</div></div>
+        <div class="stat-box"><div class="val" id="statTodayTotal">0</div><div class="lbl">Today Total</div></div>
+        <div class="stat-box"><div class="val" id="statDailyAvg">0</div><div class="lbl">Current Daily Avg</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏆 Top 10 Leaderboard</h2>
+      <div class="scroll-box" id="leaderboardContainer" style="max-height: 250px;"></div>
+    </div>
+  </div>
+
+  <!-- Full Width Logs & Activity Tracking -->
+  <div class="card full-width">
+    <div class="data-layout">
+      <div>
+        <h3>Day-Wise Logs</h3>
+        <select id="dayFilter" onchange="renderDayLogs()" style="margin-bottom: 10px;"></select>
+        <div class="scroll-box" id="dayLogContainer"></div>
+      </div>
+      <div>
+        <h3>Recent Submissions</h3>
+        <div class="scroll-box" id="recentEntriesContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card full-width">
+    <div class="data-layout">
+      <div>
+        <h3>Missed Yesterday</h3>
+        <div class="scroll-box" id="missedYesterdayContainer"></div>
+      </div>
+      <div>
+        <h3>Inactive Members</h3>
+        <div class="scroll-box" id="notDoingDailyContainer"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Default Site Configuration
+  const defaultConfig = {
+    mainTitle: "Japji Sahib Path Tracker",
+    subtitle: "Track your daily path entries toward our global collective target.",
+    formHeader: "Submit Daily Path",
+    targetJaap: 51000,
+    labelName: "Full Name",
+    labelCount: "Jaap Count",
+    btnSubmit: "Submit Entry"
+  };
+
+  let siteConfig = JSON.parse(localStorage.getItem('japji_site_config')) || defaultConfig;
+  let submissions = JSON.parse(localStorage.getItem('japji_submissions')) || [];
+  let memberList = JSON.parse(localStorage.getItem('japji_members')) || [];
+  
+  let isAdmin = false;
+  let editingEntryId = null;
+  let resetCountdownInterval = null;
+
+  document.getElementById("date").value = new Date().toISOString().split("T")[0];
+
+  // Toggle Customizer Accordion
+  function toggleCustomizerPanel() {
+    const panel = document.getElementById("customizerPanel");
+    const arrow = document.getElementById("customizerArrow");
+    if (panel.style.display === "none") {
+      panel.style.display = "block";
+      arrow.innerText = "▼";
+    } else {
+      panel.style.display = "none";
+      arrow.innerText = "►";
+    }
+  }
+
+  // Apply Live Configuration to UI
+  function applyConfiguration() {
+    document.getElementById("tabTitle").innerText = siteConfig.mainTitle;
+    document.getElementById("displayTitle").innerText = siteConfig.mainTitle;
+    document.getElementById("displaySubtitle").innerText = siteConfig.subtitle;
+    document.getElementById("displayFormHeader").innerText = siteConfig.formHeader;
+    
+    document.getElementById("lblInputName").innerText = siteConfig.labelName;
+    document.getElementById("name").placeholder = `Enter ${siteConfig.labelName}`;
+    
+    document.getElementById("lblInputCount").innerText = siteConfig.labelCount;
+    document.getElementById("count").placeholder = `Enter ${siteConfig.labelCount}`;
+    
+    document.getElementById("btnSubmitForm").innerText = siteConfig.btnSubmit;
+
+    // Admin Customizer Input Defaults
+    document.getElementById("cfgMainTitle").value = siteConfig.mainTitle;
+    document.getElementById("cfgSubtitle").value = siteConfig.subtitle;
+    document.getElementById("cfgFormHeader").value = siteConfig.formHeader;
+    document.getElementById("cfgTargetJaap").value = siteConfig.targetJaap;
+    document.getElementById("cfgLabelName").value = siteConfig.labelName;
+    document.getElementById("cfgLabelCount").value = siteConfig.labelCount;
+    document.getElementById("cfgBtnSubmit").value = siteConfig.btnSubmit;
+  }
+
+  function saveSiteConfiguration() {
+    siteConfig = {
+      mainTitle: document.getElementById("cfgMainTitle").value.trim() || defaultConfig.mainTitle,
+      subtitle: document.getElementById("cfgSubtitle").value.trim() || defaultConfig.subtitle,
+      formHeader: document.getElementById("cfgFormHeader").value.trim() || defaultConfig.formHeader,
+      targetJaap: Number(document.getElementById("cfgTargetJaap").value) || defaultConfig.targetJaap,
+      labelName: document.getElementById("cfgLabelName").value.trim() || defaultConfig.labelName,
+      labelCount: document.getElementById("cfgLabelCount").value.trim() || defaultConfig.labelCount,
+      btnSubmit: document.getElementById("cfgBtnSubmit").value.trim() || defaultConfig.btnSubmit,
+    };
+
+    localStorage.setItem('japji_site_config', JSON.stringify(siteConfig));
+    applyConfiguration();
+    renderAll();
+    
+    // Collapse panel & show in-screen notification bar (No browser alert popups)
+    document.getElementById("customizerPanel").style.display = "none";
+    document.getElementById("customizerArrow").innerText = "►";
+    
+    const alertBox = document.getElementById("configSaveAlert");
+    alertBox.style.display = "block";
+    setTimeout(() => alertBox.style.display = "none", 3500);
+  }
+
+  // Universal Theme Switcher Logic
+  function setTheme(themeMode) {
+    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`theme-${themeMode}`).classList.add('active');
+    
+    if (themeMode === 'system') {
+      localStorage.removeItem('japji_theme');
+      applySystemTheme();
+    } else {
+      localStorage.setItem('japji_theme', themeMode);
+      document.documentElement.setAttribute('data-theme', themeMode);
+    }
+  }
+
+  function applySystemTheme() {
+    if (!localStorage.getItem('japji_theme')) {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    }
+  }
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (!localStorage.getItem('japji_theme')) applySystemTheme();
+  });
+  setTheme(localStorage.getItem('japji_theme') || 'system');
+
+  // Input Restrictions
+  document.getElementById("name").addEventListener("input", function() {
+    this.value = this.value.replace(/[^a-zA-Z\s-]/g, "");
+  });
+  document.getElementById("phone").addEventListener("input", function() {
+    this.value = this.value.replace(/\D/g, "");
+  });
+
+  // Global Time Tracker (Indian Standard Time - Asia/Kolkata)
+  function updateGlobalClock() {
+    const options = {
+      timeZone: 'Asia/Kolkata', hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit',
+      day: '2-digit', month: 'short', year: 'numeric'
+    };
+    document.getElementById("istTimeDisplay").innerText = new Intl.DateTimeFormat('en-IN', options).format(new Date());
+  }
+  setInterval(updateGlobalClock, 1000);
+  updateGlobalClock();
+
+  function saveData() {
+    localStorage.setItem('japji_submissions', JSON.stringify(submissions));
+    localStorage.setItem('japji_members', JSON.stringify(memberList));
+  }
+
+  // Count Up Animation
+  function animateValue(id, end) {
+    const obj = document.getElementById(id);
+    const start = parseInt(obj.innerText.replace(/,/g, '')) || 0;
+    if (start === end) { obj.innerText = end.toLocaleString(); return; }
+    
+    const range = end - start;
+    let current = start;
+    const increment = end > start ? Math.ceil(range / 25) : Math.floor(range / 25);
+    
+    const timer = setInterval(() => {
+      current += increment;
+      if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+        obj.innerText = end.toLocaleString();
+        clearInterval(timer);
+      } else {
+        obj.innerText = current.toLocaleString();
+      }
+    }, 30);
+  }
+
+  function calculateStats() {
+    const grandTotal = submissions.reduce((acc, curr) => acc + curr.count, 0);
+    const remaining = Math.max(0, siteConfig.targetJaap - grandTotal);
+    const totalPeople = new Set([...memberList, ...submissions.map(s => s.name)]).size;
+    
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todayTotal = submissions.filter(s => s.date === todayStr).reduce((acc, curr) => acc + curr.count, 0);
+
+    const progressPercentage = Math.min(100, ((grandTotal / siteConfig.targetJaap) * 100)).toFixed(1);
+    
+    setTimeout(() => {
+      document.getElementById("progressBarFill").style.width = `${progressPercentage}%`;
+    }, 100);
+    
+    document.getElementById("progressPercent").innerText = `${progressPercentage}%`;
+
+    const now = new Date();
+    const dates = submissions.map(s => new Date(s.date)).filter(d => !isNaN(d));
+    const startDate = dates.length ? new Date(Math.min(...dates)) : new Date();
+    const daysElapsed = Math.max(1, Math.ceil((now - startDate) / (1000 * 60 * 60 * 24)));
+    const currentDailyAvg = Math.round(grandTotal / daysElapsed);
+
+    animateValue("statTarget", siteConfig.targetJaap);
+    animateValue("statGrandTotal", grandTotal);
+    animateValue("statRemaining", remaining);
+    animateValue("statPeopleCount", totalPeople);
+    animateValue("statTodayTotal", todayTotal);
+    animateValue("statDailyAvg", currentDailyAvg);
+  }
+
+  function renderLeaderboard() {
+    const totals = {};
+    submissions.forEach(s => { totals[s.name] = (totals[s.name] || 0) + s.count; });
+
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const container = document.getElementById("leaderboardContainer");
+
+    container.innerHTML = sorted.map(([name, count], index) => {
+      let badge = "🥉 Bronze";
+      if (count >= 500) badge = "👑 Legend";
+      else if (count >= 250) badge = "🥇 Gold";
+      else if (count >= 100) badge = "🥈 Silver";
+
+      return `
+        <div class="leader-row">
+          <span class="leader-rank">#${index + 1}</span>
+          <span class="leader-name">${name}</span>
+          <span class="level-badge">${badge} (${count.toLocaleString()})</span>
+        </div>
+      `;
+    }).join("") || "<small style='color:var(--text-sub);'>No submissions logged yet.</small>";
+  }
+
+  function toggleAdminPasswordInput() {
+    const area = document.getElementById("adminPasswordContainer");
+    area.style.display = area.style.display === "none" ? "block" : "none";
+  }
+
+  function checkAdmin() {
+    if (document.getElementById("adminCode").value === "2626") {
+      isAdmin = true;
+      document.getElementById("adminLoggedOut").style.display = "none";
+      document.getElementById("adminLoggedIn").style.display = "block";
+      document.getElementById("adminCode").value = "";
+      renderAll();
+    } else {
+      alert("Incorrect Password");
+    }
+  }
+
+  function logoutAdmin() {
+    isAdmin = false;
+    document.getElementById("adminLoggedOut").style.display = "block";
+    document.getElementById("adminPasswordContainer").style.display = "none";
+    document.getElementById("adminLoggedIn").style.display = "none";
+    document.getElementById("customizerPanel").style.display = "none";
+    document.getElementById("customizerArrow").innerText = "►";
+    if (resetCountdownInterval) clearInterval(resetCountdownInterval);
+    renderAll();
+  }
+
+  function renderAll() {
+    calculateStats();
+    renderLeaderboard();
+    renderRecentEntries();
+    populateDayDropdown();
+    renderDayLogs();
+    renderMissingTracker();
+  }
+
+  function renderRecentEntries() {
+    const container = document.getElementById("recentEntriesContainer");
+    const sorted = [...submissions].reverse();
+    
+    container.innerHTML = sorted.map(item => {
+      const isEditing = editingEntryId === item.id;
+      return `
+        <div class="item-row">
+          <div>
+            <strong>${item.name}</strong> 
+            ${isEditing ? 
+              `<div class="edit-input-group" style="margin-top: 4px;">
+                <input type="number" id="edit-val-${item.id}" value="${item.count}" min="1">
+                <button onclick="saveInlineEdit(${item.id})" class="action-btn confirm-tick">✓</button>
+               </div>` 
+              : `(${item.count.toLocaleString()})`
+            }<br>
+            <small style="color:var(--text-sub)">${item.date} • ${item.phone}</small>
+          </div>
+          ${isAdmin ? `
+            <div style="display:flex; align-items: center;">
+              ${!isEditing ? `<button onclick="startInlineEdit(${item.id})" class="action-btn">Edit</button>` : ''}
+              <button onclick="requestDeleteEntry(${item.id}, this)" class="action-btn danger">Delete</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join("") || "<small style='color:var(--text-sub);'>No entries submitted yet.</small>";
+  }
+
+  function populateDayDropdown() {
+    const select = document.getElementById("dayFilter");
+    const uniqueDates = [...new Set(submissions.map(s => s.date))].sort().reverse();
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">Select Date...</option>' + 
+      uniqueDates.map(d => `<option value="${d}">${d}</option>`).join("");
+    if (uniqueDates.includes(currentVal)) select.value = currentVal;
+    else if (uniqueDates.length) select.value = uniqueDates[0];
+  }
+
+  function renderDayLogs() {
+    const selectedDate = document.getElementById("dayFilter").value;
+    const container = document.getElementById("dayLogContainer");
+    if (!selectedDate) {
+      container.innerHTML = "<small style='color:var(--text-sub);'>Select a date above to view entries.</small>";
+      return;
+    }
+    const filtered = submissions.filter(s => s.date === selectedDate);
+    const personTotals = {};
+    filtered.forEach(s => { personTotals[s.name] = (personTotals[s.name] || 0) + s.count; });
+
+    container.innerHTML = Object.entries(personTotals).map(([name, count]) => `
+      <div class="item-row">
+        <span><strong>${name}</strong></span>
+        <span class="badge">${count.toLocaleString()} Total</span>
+      </div>
+    `).join("") || "<small style='color:var(--text-sub);'>No entries on this date.</small>";
+  }
+
+  function renderMissingTracker() {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yestStr = yesterday.toISOString().split("T")[0];
+
+    const yesterdayActive = new Set(submissions.filter(s => s.date === yestStr).map(s => s.name));
+    const allMembers = [...new Set([...memberList, ...submissions.map(s => s.name)])];
+
+    const missedYesterday = allMembers.filter(m => !yesterdayActive.has(m));
+    document.getElementById("missedYesterdayContainer").innerHTML = missedYesterday.map(m => `
+      <div class="item-row">
+        <span>${m}</span>
+        ${isAdmin ? `<div><button onclick="requestRemoveMember('${m}', this)" class="action-btn danger">Remove</button></div>` : ''}
+      </div>
+    `).join("") || "<small style='color:var(--text-sub);'>Everyone submitted yesterday!</small>";
+
+    const totalDaysRecorded = new Set(submissions.map(s => s.date)).size || 1;
+    const userDaysActive = {};
+    submissions.forEach(s => { userDaysActive[s.name] = (userDaysActive[s.name] || 0) + 1; });
+
+    const inactiveUsers = allMembers.filter(m => (userDaysActive[m] || 0) < Math.ceil(totalDaysRecorded / 2));
+    document.getElementById("notDoingDailyContainer").innerHTML = inactiveUsers.map(m => `
+      <div class="item-row">
+        <span>${m}</span>
+        ${isAdmin ? `<div><button onclick="requestRemoveMember('${m}', this)" class="action-btn danger">Remove</button></div>` : ''}
+      </div>
+    `).join("") || "<small style='color:var(--text-sub);'>No inactive members.</small>";
+  }
+
+  // Form Submit Handler
+  document.getElementById("jaapForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const count = Number(document.getElementById("count").value);
+    const date = document.getElementById("date").value;
+
+    if (phone.length < 10 || phone.length > 15) {
+      alert("Please enter a valid phone number (10-15 digits).");
+      return;
+    }
+
+    submissions.push({ id: Date.now(), name, phone, count, date });
+    if (!memberList.includes(name)) memberList.push(name);
+    saveData();
+
+    const msg = document.getElementById("statusMessage");
+    msg.style.display = "block";
+    setTimeout(() => msg.style.display = "none", 4000);
+
+    document.getElementById("count").value = "";
+    renderAll();
+  });
+
+  // Tick Delete Actions
+  function requestDeleteEntry(id, btn) {
+    if (btn.classList.contains("confirm-tick")) {
+      submissions = submissions.filter(s => s.id !== id);
+      saveData();
+      renderAll();
+    } else {
+      btn.innerHTML = "✓";
+      btn.classList.add("confirm-tick");
+      setTimeout(() => {
+        if (btn && btn.parentNode) {
+          btn.innerHTML = "Delete";
+          btn.classList.remove("confirm-tick");
+        }
+      }, 3000);
+    }
+  }
+
+  function requestRemoveMember(name, btn) {
+    if (btn.classList.contains("confirm-tick")) {
+      memberList = memberList.filter(m => m !== name);
+      saveData();
+      renderAll();
+    } else {
+      btn.innerHTML = "✓";
+      btn.classList.add("confirm-tick");
+      setTimeout(() => {
+        if (btn && btn.parentNode) {
+          btn.innerHTML = "Remove";
+          btn.classList.remove("confirm-tick");
+        }
+      }, 3000);
+    }
+  }
+
+  // 10s Timer Reset
+  function startResetTimer(btn) {
+    if (resetCountdownInterval) return;
+    let timeLeft = 10;
+    btn.classList.add("confirm-tick");
+    btn.innerHTML = `Cancel Reset (${timeLeft}s)`;
+
+    resetCountdownInterval = setInterval(() => {
+      timeLeft--;
+      if (timeLeft > 0) {
+        btn.innerHTML = `Cancel Reset (${timeLeft}s)`;
+      } else {
+        clearInterval(resetCountdownInterval);
+        resetCountdownInterval = null;
+        submissions = [];
+        memberList = [];
+        saveData();
+        renderAll();
+        btn.classList.remove("confirm-tick");
+        btn.innerHTML = "Reset All Entries";
+      }
+    }, 1000);
+
+    btn.onclick = () => {
+      if (resetCountdownInterval) {
+        clearInterval(resetCountdownInterval);
+        resetCountdownInterval = null;
+        btn.classList.remove("confirm-tick");
+        btn.innerHTML = "Reset All Entries";
+        btn.onclick = () => startResetTimer(btn);
+      }
+    };
+  }
+
+  function startInlineEdit(id) {
+    editingEntryId = id;
+    renderRecentEntries();
+  }
+
+  function saveInlineEdit(id) {
+    const input = document.getElementById(`edit-val-${id}`);
+    if (input && input.value > 0) {
+      const item = submissions.find(s => s.id === id);
+      if (item) {
+        item.count = Number(input.value);
+        saveData();
+      }
+    }
+    editingEntryId = null;
+    renderAll();
+  }
+
+  // Export Data JSON Backup
+  function exportDataJSON() {
+    const exportPayload = {
+      config: siteConfig,
+      submissions: submissions,
+      members: memberList
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `tracker_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  }
+
+  applyConfiguration();
+  renderAll();
+</script>
+
+</body>
+</html>
